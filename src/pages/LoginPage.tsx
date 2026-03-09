@@ -31,6 +31,7 @@ export default function LoginPage() {
         const { adminLogin } = useGameStore.getState();
         adminLogin();
         toast.success('Admin Access Granted', { description: 'Welcome to the grid, Admin.' });
+        setIsLoading(false);
         navigate('/admin');
         return;
       }
@@ -39,9 +40,16 @@ export default function LoginPage() {
         throw new Error('Invalid code format. Codes usually have 4 or more characters.');
       }
 
-      const teamData = await authenticateTeam(teamName, teamCode);
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timed out. Database may not be set up yet.')), 10000)
+      );
+
+      const teamData = await Promise.race([
+        authenticateTeam(teamName, teamCode),
+        timeoutPromise
+      ]);
       if (!teamData) {
-         throw new Error('Failed to reach server. Check connection.');
+         throw new Error('Failed to reach server. Check your internet connection.');
       }
 
       login({
@@ -60,9 +68,16 @@ export default function LoginPage() {
       navigate('/dashboard');
       
     } catch (err: any) {
-      toast.error('Authentication Failed', { 
-        description: err instanceof Error ? err.message : 'Invalid credentials.' 
-      });
+      console.error('Login error:', err);
+      const message = err?.message || 'Something went wrong.';
+      setIsLoading(false);
+      // Use setTimeout to ensure toast renders after state updates
+      setTimeout(() => {
+        toast.error('Authentication Failed', { 
+          description: message,
+          duration: 8000,
+        });
+      }, 100);
     } finally {
       setIsLoading(false);
     }

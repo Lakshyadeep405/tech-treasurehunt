@@ -73,6 +73,32 @@ export async function getStation(stationNumber: number): Promise<StationData | n
 }
 
 /**
+ * Fetches all stations from Firestore (for admin panel)
+ */
+export async function getAllStations(): Promise<Record<number, StationData>> {
+  if (!db) return {};
+  
+  const result: Record<number, StationData> = {};
+  for (let i = 1; i <= 6; i++) {
+    const stationRef = doc(db, 'stations', i.toString());
+    const snap = await getDoc(stationRef);
+    if (snap.exists()) {
+      result[i] = snap.data() as StationData;
+    }
+  }
+  return result;
+}
+
+/**
+ * Updates a field on a station document (admin only)
+ */
+export async function updateStationField(stationNumber: number, field: string, value: string) {
+  if (!db) return;
+  const stationRef = doc(db, 'stations', stationNumber.toString());
+  await updateDoc(stationRef, { [field]: value });
+}
+
+/**
  * Updates a team's progress when they unlock a station
  */
 export async function updateTeamStation(teamCode: string, newStationNum: number, isFinished: boolean = false) {
