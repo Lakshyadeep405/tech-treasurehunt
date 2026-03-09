@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { useGameStore } from './store/gameStore';
+import { useGameStore, verifyAdminSignature } from './store/gameStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import StationPage from './pages/StationPage';
@@ -12,10 +12,11 @@ import VictoryPage from './pages/VictoryPage';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) => {
-  const { id, isAdmin } = useGameStore();
+  const { id, isAdmin, adminSignature } = useGameStore();
   
   if (!id) return <Navigate to="/" replace />;
-  if (requireAdmin && !isAdmin) return <Navigate to="/dashboard" replace />;
+  // Verify admin signature to prevent localStorage tampering
+  if (requireAdmin && (!isAdmin || !verifyAdminSignature(adminSignature))) return <Navigate to="/dashboard" replace />;
   
   return <>{children}</>;
 };

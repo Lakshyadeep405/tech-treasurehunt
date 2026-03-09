@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useGameStore } from '@/store/gameStore';
 import TopNav from '@/components/TopNav';
 import { getStation, addTeamHintPenalty } from '@/lib/dbUtils';
+import { hashAnswer } from '@/lib/hashUtils';
 import type { StationData } from '@/lib/mockData';
 
 export default function StationPage() {
@@ -34,17 +35,17 @@ export default function StationPage() {
     }
   }, [stationNum, currentStation, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!station) return;
     
-    // Validate answer (case insensitive, trimmed)
-    if (answer.trim().toLowerCase() === station.answer.toLowerCase()) {
+    // Hash user's answer and compare with stored hash
+    const userHash = await hashAnswer(answer);
+    if (userHash === station.answerHash) {
       setIsSolved(true);
       toast.success('Sequence Accepted', { description: 'Access code generated.' });
     } else {
       toast.error('Invalid Sequence', { description: 'The system rejected your input.' });
-      // Glitch effect on input could go here
     }
   };
 

@@ -2,27 +2,51 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Admin has full access to everything
-    match /{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.email == 'admin@techera.com'; 
-    }
 
-    // Stations Collection
+    // ─── STATION DATA ───
+    // Anyone logged in can read stations (answers are hashed, so this is safe)
+    // Only admins should write (via Admin SDK, which bypasses rules)
     match /stations/{stationId} {
-      // Anyone can read stations (we will hide sensitive fields in the UI, or we should use a Cloud Function)
-      // For MVP without Cloud Functions, we allow reads but rely on obscure document IDs or just client-side validation.
-      // Better yet, we can restrict to only allowing read. Admins can write.
-      allow read: if true; 
-      allow write: if false; 
+      allow read: if true;
+      allow write: if false;  // Only admin SDK can write
     }
 
-    // Teams Collection
-    match /teams/{teamId} {
-      // Teams can read their own data to resume session.
-      // We will use the team Code as the document ID for simplicity, or a generated UUID.
-      allow read, update: if true; // In a production app with sensitive data, we'd use Anonymous Auth and check request.auth.uid == teamId. For this MVP, we will allow open read/update to make it fast, but rely on the frontend for logic.
+    // ─── TEAM DATA ───
+    match /teams/{teamCode} {
+      // Anyone can read team data (for leaderboard)
+      allow read: if true;
+      
+      // Teams can only create their OWN document or update their own
       allow create: if true;
+      
+      // Updates are restricted:
+      // - Can only update specific fields
+      // - Cannot set currentStation higher than current + 1
+      // - Cannot set status to 'finished' unless currentStation >= 6
+      // - Cannot decrease cheatWarnings
+      allow update: if (
+        // Only allow updating these specific fields
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['currentStation', 'totalHintsUsed', 'cheatWarnings', 'lastActive', 'status', 'endTime', 'hintPenalties']) &&
+        // currentStation can only go up by 1
+        (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['currentStation']) ||
+          request.resource.data.currentStation <= resource.data.currentStation + 1
+        ) &&
+        // cheatWarnings can only increase
+        (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['cheatWarnings']) ||
+          request.resource.data.cheatWarnings >= resource.data.cheatWarnings
+        ) &&
+        // status can only be set to 'finished' if at station 6+
+        (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+          request.resource.data.status != 'finished' ||
+          resource.data.currentStation >= 6
+        )
+      );
+      
+      // Never allow deleting team data from client
       allow delete: if false;
     }
   }

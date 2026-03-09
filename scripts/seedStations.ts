@@ -1,27 +1,32 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
+import { createHash } from 'crypto';
 
-// To run this script, you must generate a New Private Key from your Firebase Service Accounts pane in the console.
-// Save it to the root of the project as 'serviceAccountKey.json'
-// Run with: npx tsx scripts/seedStations.ts
+// To run this script:
+// 1. Place your Firebase service account key as 'serviceAccountKey.json' in project root
+// 2. Run: npx tsx scripts/seedStations.ts
 
 let serviceAccount;
 try {
   serviceAccount = JSON.parse(readFileSync('./serviceAccountKey.json', 'utf8'));
 } catch (error) {
-  console.error('\n[X] Error: serviceAccountKey.json not found or invalid format.');
-  console.error('Please download your Firebase Service Account JSON key, place it in the project root as `serviceAccountKey.json` and try again.\n');
+  console.error('\n[X] Error: serviceAccountKey.json not found.');
+  console.error('Download it from Firebase Console → Project Settings → Service Accounts\n');
   process.exit(1);
 }
 
-initializeApp({
-  credential: cert(serviceAccount)
-});
-
+initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
-// Full Game Definition Data
+// Hash function to protect answers
+function hashAnswer(answer: string): string {
+  return createHash('sha256')
+    .update(answer.trim().toLowerCase())
+    .digest('hex');
+}
+
+// Full Game Data — answers will be hashed before storing
 const stationsData = [
   {
     stationNumber: 1,
@@ -134,18 +139,29 @@ const stationsData = [
 ];
 
 async function seedDatabase() {
-  console.log('Seeding Clue Code Stations...');
+  console.log('Seeding Clue Code Stations (with hashed answers)...');
   const batch = db.batch();
 
   stationsData.forEach((station) => {
-    // We use the station ID as a string for easy querying (e.g. '1', '2')
     const stationRef = db.collection('stations').doc(station.stationNumber.toString());
-    batch.set(stationRef, station);
+    
+    // Hash the answer and lockCode before storing
+    const securedStation = {
+      ...station,
+      answerHash: hashAnswer(station.answer),
+      lockCodeHash: hashAnswer(station.lockCode),
+    };
+    
+    // Remove plaintext answer from the stored document
+    delete (securedStation as any).answer;
+
+    batch.set(stationRef, securedStation);
+    console.log(`  Station ${station.stationNumber}: answer "${station.answer}" → hash ${securedStation.answerHash.slice(0, 12)}...`);
   });
 
   try {
     await batch.commit();
-    console.log('[✓] Successfully seeded 6 stations to Firestore.');
+    console.log('\n[✓] Successfully seeded 6 stations with hashed answers.');
   } catch (err) {
     console.error('[X] Error seeding database:', err);
   }

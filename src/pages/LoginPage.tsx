@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [teamCode, setTeamCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useGameStore();
+  const { login, loginAttempts, lastAttemptTime, recordLoginAttempt } = useGameStore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +24,29 @@ export default function LoginPage() {
       return;
     }
 
+    // Rate limiting: block after 5 attempts for 30 seconds
+    if (loginAttempts >= 5 && lastAttemptTime) {
+      const elapsed = Date.now() - lastAttemptTime;
+      if (elapsed < 30000) {
+        const remaining = Math.ceil((30000 - elapsed) / 1000);
+        toast.error('Too Many Attempts', { 
+          description: `System locked. Try again in ${remaining} seconds.`,
+          duration: 5000,
+        });
+        return;
+      }
+    }
+
+    // Sanitize inputs
+    const cleanName = teamName.trim().replace(/[<>]/g, '');
+    const cleanCode = teamCode.trim();
+
     setIsLoading(true);
+    recordLoginAttempt();
     
     try {
       const adminPass = import.meta.env.VITE_ADMIN_PASS || 'admin@20';
-      if (teamCode === adminPass && teamName.toLowerCase() === 'admin') {
+      if (cleanCode === adminPass && cleanName.toLowerCase() === 'admin') {
         const { adminLogin } = useGameStore.getState();
         adminLogin();
         toast.success('Admin Access Granted', { description: 'Welcome to the grid, Admin.' });
@@ -37,7 +55,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (teamCode.length < 4) {
+      if (cleanCode.length < 4) {
         throw new Error('Invalid code format. Codes usually have 4 or more characters.');
       }
 
@@ -46,7 +64,7 @@ export default function LoginPage() {
       );
 
       const teamData = await Promise.race([
-        authenticateTeam(teamName, teamCode),
+        authenticateTeam(cleanName, cleanCode),
         timeoutPromise
       ]);
       if (!teamData) {

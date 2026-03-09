@@ -353,9 +353,9 @@ export default function AdminPage() {
                         ) : (
                           <span 
                             className={`font-bold text-neon-primary ${isEditing ? 'cursor-pointer hover:text-amber-500 transition-colors' : ''}`}
-                            onClick={() => isEditing && setEditField({ field: 'answer', value: station.answer })}
+                            onClick={() => isEditing && setEditField({ field: 'answer', value: station.answer || '' })}
                           >
-                            {station.answer}
+                            {station.answer || `🔒 ${station.answerHash?.slice(0, 16)}...`}
                           </span>
                         )}
                       </div>

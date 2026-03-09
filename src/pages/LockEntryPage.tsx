@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useGameStore } from '@/store/gameStore';
 import { getStation, updateTeamStation } from '@/lib/dbUtils';
+import { hashAnswer } from '@/lib/hashUtils';
 import type { StationData } from '@/lib/mockData';
 import TopNav from '@/components/TopNav';
 
@@ -43,8 +44,9 @@ export default function LockEntryPage() {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Case-insensitive exact match
-    if (station && code.trim().toUpperCase() === station.lockCode.toUpperCase()) {
+    // Hash user input and compare with stored hash
+    const userHash = await hashAnswer(code);
+    if (station && userHash === station.lockCodeHash) {
       toast.success('Override Successful', { 
         description: 'System unlocked. Proceeding to next phase.' 
       });
