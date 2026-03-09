@@ -27,7 +27,7 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      if (teamCode.toLowerCase() === 'admin' && teamName.toLowerCase() === 'admin') {
+      if (teamCode === 'admin@20' && teamName.toLowerCase() === 'admin') {
         const { adminLogin } = useGameStore.getState();
         adminLogin();
         toast.success('Admin Access Granted', { description: 'Welcome to the grid, Admin.' });
