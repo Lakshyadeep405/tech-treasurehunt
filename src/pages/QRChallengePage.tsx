@@ -5,7 +5,9 @@ import { QrCode, ShieldAlert, Cpu } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/gameStore';
-import { MockStations } from '@/lib/mockData';
+import { getStation } from '@/lib/dbUtils';
+import type { StationData } from '@/lib/mockData';
+import { useState } from 'react';
 
 export default function QRChallengePage() {
   const { num } = useParams();
@@ -13,15 +15,28 @@ export default function QRChallengePage() {
   const stationNum = parseInt(num || '1', 10);
   
   const { currentStation, id } = useGameStore();
+  const [station, setStation] = useState<StationData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // If not logged in, redirect to login
     if (!id) {
       navigate('/');
+      return;
     }
-  }, [id, navigate]);
+    getStation(stationNum).then(s => {
+      setStation(s);
+      setIsLoading(false);
+    });
+  }, [id, navigate, stationNum]);
 
-  const station = MockStations[stationNum];
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4 bg-background text-foreground">
+        <p className="text-neon-secondary font-mono animate-pulse">LOADING NODE DATA...</p>
+      </div>
+    );
+  }
 
   if (!station) {
     return (

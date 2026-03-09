@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster, toast } from 'sonner';
+import { Toaster } from 'sonner';
 import { useGameStore } from './store/gameStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -21,27 +21,14 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
 };
 
 import { useEffect } from 'react';
+import { useAntiCheat } from './hooks/useAntiCheat';
 
 function App() {
-  const { id, isAdmin, addPenalty } = useGameStore();
+  const { id, isAdmin } = useGameStore();
+
+  useAntiCheat();
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Only penalize active non-admin players when they hide the tab
-      if (document.hidden && id && !isAdmin) {
-        addPenalty();
-        // Use a short timeout to ensure toast appears when they return
-        setTimeout(() => {
-          toast.error('SECURITY VIOLATION DETECTED', { 
-            description: 'Tab switching registered. A 5-minute penalty has been applied to your team.',
-            duration: 8000,
-          });
-        }, 500);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     // Disable right-click / context menu
     const handleContextMenu = (e: MouseEvent) => {
       if (!isAdmin) e.preventDefault();
@@ -49,10 +36,9 @@ function App() {
     document.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [id, isAdmin, addPenalty]);
+  }, [isAdmin]);
 
   return (
     <BrowserRouter>

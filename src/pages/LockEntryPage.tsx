@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useGameStore } from '@/store/gameStore';
-import { MockStations } from '@/lib/mockData';
+import { getStation, updateTeamStation } from '@/lib/dbUtils';
+import type { StationData } from '@/lib/mockData';
 import TopNav from '@/components/TopNav';
 
 export default function LockEntryPage() {
@@ -15,22 +16,23 @@ export default function LockEntryPage() {
   const navigate = useNavigate();
   const stationNum = parseInt(num || '1', 10);
   
-  const { currentStation, updateProgress, finishGame } = useGameStore();
+  const { id: teamId, currentStation, updateProgress, finishGame } = useGameStore();
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [station, setStation] = useState<StationData | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (stationNum !== currentStation) {
       navigate('/dashboard');
+    } else {
+      getStation(stationNum).then(s => setStation(s));
     }
     // Auto-focus input on mound
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, [stationNum, currentStation, navigate]);
-
-  const station = MockStations[stationNum];
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,17 +44,23 @@ export default function LockEntryPage() {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     // Case-insensitive exact match
-    if (code.trim().toUpperCase() === station.lockCode.toUpperCase()) {
+    if (station && code.trim().toUpperCase() === station.lockCode.toUpperCase()) {
       toast.success('Override Successful', { 
         description: 'System unlocked. Proceeding to next phase.' 
       });
       
-      if (currentStation === 6) {
-        finishGame();
-        navigate('/victory');
+      if (teamId) {
+        if (currentStation === 6) {
+          await updateTeamStation(teamId, currentStation, true);
+          finishGame();
+          navigate('/victory');
+        } else {
+          await updateTeamStation(teamId, currentStation + 1);
+          updateProgress(currentStation + 1);
+          navigate('/dashboard');
+        }
       } else {
-        updateProgress(currentStation + 1);
-        navigate('/dashboard');
+        toast.error('Session Error', { description: 'Team ID is missing.' });
       }
     } else {
       toast.error('Access Denied', { 
@@ -64,6 +72,17 @@ export default function LockEntryPage() {
     
     setIsVerifying(false);
   };
+
+  if (!station) {
+    return (
+      <>
+        <TopNav />
+        <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] text-neon-primary font-mono animate-pulse">
+          LOADING SECURE INTERFACE...
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

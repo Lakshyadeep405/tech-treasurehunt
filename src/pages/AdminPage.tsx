@@ -6,26 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import { useGameStore } from '@/store/gameStore';
 import { MockStations } from '@/lib/mockData';
+import { subscribeToLeaderboard } from '@/lib/dbUtils';
+import type { TeamDoc } from '@/lib/dbUtils';
 import TopNav from '@/components/TopNav';
-
-// Mock Teams Data
-const MOCK_TEAMS = [
-  { id: '1', name: 'CyberPunks', station: 4, hints: 2, status: 'playing', lastActive: '2 mins ago' },
-  { id: '2', name: 'NullPointers', station: 6, hints: 0, status: 'playing', lastActive: 'Just now' },
-  { id: '3', name: '404 BrainNotFound', station: 6, hints: 1, status: 'finished', lastActive: '10 mins ago' },
-  { id: '4', name: 'SyntaxErrors', station: 2, hints: 3, status: 'playing', lastActive: '15 mins ago' },
-  { id: '5', name: 'sudo win', station: 1, hints: 0, status: 'waiting', lastActive: 'Never' },
-];
 
 export default function AdminPage() {
   const { isAdmin } = useGameStore();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [teams, setTeams] = useState<TeamDoc[]>([]);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
   // If somehow accessed without admin rights, redirect silently
@@ -34,12 +30,21 @@ export default function AdminPage() {
     return null;
   }
 
+  useEffect(() => {
+    setIsRefreshing(true);
+    const unsubscribe = subscribeToLeaderboard((fetchedTeams) => {
+      setTeams(fetchedTeams);
+      setIsRefreshing(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate network fetch
-    await new Promise(r => setTimeout(r, 800));
-    setIsRefreshing(false);
-    toast.success('System Refreshed', { description: 'Latest telemetry data acquired.' });
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success('System Refreshed', { description: 'Latest telemetry data acquired.' });
+    }, 500);
   };
 
   const generateQRCode = async (stationNum: number, index: number) => {
@@ -78,9 +83,17 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  const filteredTeams = MOCK_TEAMS.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTeams = teams.filter(t => 
+    t.teamName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getRelativeTime = (time: number) => {
+    try {
+      return formatDistanceToNow(time, { addSuffix: true });
+    } catch (e) {
+      return 'Unknown';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -146,6 +159,7 @@ export default function AdminPage() {
                         <th className="px-6 py-4 font-medium text-center">Status</th>
                         <th className="px-6 py-4 font-medium text-center">Station</th>
                         <th className="px-6 py-4 font-medium text-center">Hints</th>
+                        <th className="px-6 py-4 font-medium text-center">Warnings</th>
                         <th className="px-6 py-4 font-medium text-right">Last Sync</th>
                       </tr>
                     </thead>
@@ -158,7 +172,7 @@ export default function AdminPage() {
                           className="hover:bg-secondary/10 transition-colors"
                         >
                           <td className="px-6 py-4 font-bold tracking-wide">
-                            {team.name}
+                            {team.teamName}
                           </td>
                           <td className="px-6 py-4 text-center">
                             {team.status === 'playing' ? (
@@ -176,16 +190,21 @@ export default function AdminPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="text-lg text-foreground font-bold">{team.station}</span>
+                            <span className="text-lg text-foreground font-bold">{team.currentStation}</span>
                             <span className="text-muted-foreground text-xs">/6</span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className={team.hints > 0 ? "text-destructive font-bold" : "text-muted-foreground"}>
-                              {team.hints}
+                            <span className={team.totalHintsUsed > 0 ? "text-destructive font-bold" : "text-muted-foreground"}>
+                              {team.totalHintsUsed}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={team.cheatWarnings > 0 ? "text-orange-500 font-bold" : "text-muted-foreground"}>
+                              {team.cheatWarnings || 0}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right text-muted-foreground text-xs">
-                            {team.lastActive}
+                            {getRelativeTime(team.endTime || team.startTime)}
                           </td>
                         </motion.tr>
                       ))}

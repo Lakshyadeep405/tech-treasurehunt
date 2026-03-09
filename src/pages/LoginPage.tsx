@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useGameStore } from '@/store/gameStore';
+import { authenticateTeam } from '@/lib/dbUtils';
 
 export default function LoginPage() {
   const [teamName, setTeamName] = useState('');
@@ -26,25 +27,39 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with Firebase auth logic
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Temporary mock validation
-      if (teamCode.length < 4) {
-        throw new Error('Invalid code format');
+      if (teamCode.toLowerCase() === 'admin' && teamName.toLowerCase() === 'admin') {
+        const { adminLogin } = useGameStore.getState();
+        adminLogin();
+        toast.success('Admin Access Granted', { description: 'Welcome to the grid, Admin.' });
+        navigate('/admin');
+        return;
       }
 
-      // Mock successful login
-      const mockTeamId = `team_${Math.random().toString(36).substr(2, 9)}`;
-      login(mockTeamId, teamName);
+      if (teamCode.length < 4) {
+        throw new Error('Invalid code format. Codes usually have 4 or more characters.');
+      }
+
+      const teamData = await authenticateTeam(teamName, teamCode);
+      if (!teamData) {
+         throw new Error('Failed to reach server. Check connection.');
+      }
+
+      login({
+        id: teamData.id,
+        teamName: teamData.teamName,
+        currentStation: teamData.currentStation,
+        startTime: teamData.startTime,
+        totalHintsUsed: teamData.totalHintsUsed,
+        cheatWarnings: teamData.cheatWarnings,
+        isFinished: teamData.status === 'finished'
+      });
       
       toast.success('Access Granted', { 
-        description: `Welcome to the grid, Team ${teamName}.` 
+        description: `Welcome to the grid, Team ${teamData.teamName}.` 
       });
       navigate('/dashboard');
       
-    } catch (err) {
+    } catch (err: any) {
       toast.error('Authentication Failed', { 
         description: err instanceof Error ? err.message : 'Invalid credentials.' 
       });

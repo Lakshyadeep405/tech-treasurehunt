@@ -9,12 +9,14 @@ export interface TeamState {
   totalHintsUsed: number;
   isFinished: boolean;
   isAdmin: boolean;
-  login: (id: string, name: string) => void;
+  cheatWarnings: number;
+  login: (teamData: { id: string; teamName: string; currentStation: number; startTime: number; totalHintsUsed: number; isFinished: boolean; cheatWarnings: number }) => void;
   adminLogin: () => void;
   logout: () => void;
   updateProgress: (station: number) => void;
   useHint: () => void;
   addPenalty: () => void;
+  addCheatWarning: () => void;
   finishGame: () => void;
 }
 
@@ -28,11 +30,16 @@ export const useGameStore = create<TeamState>()(
       totalHintsUsed: 0,
       isFinished: false,
       isAdmin: false,
+      cheatWarnings: 0,
 
-      login: (id, name) => set({ 
-        id, 
-        teamName: name, 
-        startTime: Date.now(),
+      login: (teamData) => set({ 
+        id: teamData.id, 
+        teamName: teamData.teamName, 
+        currentStation: teamData.currentStation,
+        startTime: teamData.startTime,
+        totalHintsUsed: teamData.totalHintsUsed,
+        isFinished: teamData.isFinished,
+        cheatWarnings: teamData.cheatWarnings,
         isAdmin: false
       }),
       
@@ -49,7 +56,8 @@ export const useGameStore = create<TeamState>()(
         startTime: null,
         totalHintsUsed: 0,
         isFinished: false,
-        isAdmin: false
+        isAdmin: false,
+        cheatWarnings: 0
       }),
 
       updateProgress: (station) => set({ currentStation: station }),
@@ -57,6 +65,8 @@ export const useGameStore = create<TeamState>()(
       useHint: () => set((state) => ({ totalHintsUsed: state.totalHintsUsed + 1 })),
       
       addPenalty: () => set((state) => ({ totalHintsUsed: state.totalHintsUsed + 1 })),
+      
+      addCheatWarning: () => set((state) => ({ cheatWarnings: state.cheatWarnings + 1 })),
       
       finishGame: () => set({ isFinished: true })
     }),

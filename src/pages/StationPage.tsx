@@ -9,31 +9,34 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { useGameStore } from '@/store/gameStore';
 import TopNav from '@/components/TopNav';
-import { MockStations } from '@/lib/mockData';
+import { getStation, addTeamHintPenalty } from '@/lib/dbUtils';
+import type { StationData } from '@/lib/mockData';
 
 export default function StationPage() {
   const { num } = useParams();
   const navigate = useNavigate();
   const stationNum = parseInt(num || '1', 10);
   
-  const { currentStation, useHint } = useGameStore();
+  const { id: teamId, currentStation, useHint } = useGameStore();
 
   const [answer, setAnswer] = useState('');
   const [isSolved, setIsSolved] = useState(false);
   const [isHintOpen, setIsHintOpen] = useState(false);
+  const [station, setStation] = useState<StationData | null>(null);
 
   // Redirect if trying to access a future station
   useEffect(() => {
     if (stationNum > currentStation) {
       toast.error('Access Denied', { description: 'Complete previous stations first.' });
       navigate('/dashboard');
+    } else {
+      getStation(stationNum).then(data => setStation(data));
     }
   }, [stationNum, currentStation, navigate]);
 
-  const station = MockStations[stationNum] || MockStations[1];
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!station) return;
     
     // Validate answer (case insensitive, trimmed)
     if (answer.trim().toLowerCase() === station.answer.toLowerCase()) {
@@ -45,12 +48,24 @@ export default function StationPage() {
     }
   };
 
-  const handleUseHint = () => {
+  const handleUseHint = async () => {
+    if (teamId) {
+      await addTeamHintPenalty(teamId);
+    }
     useHint();
     setIsHintOpen(false);
     toast.warning('Hint Deployed', { description: 'A 5-minute penalty has been added.' });
     // Reveal hint logic would go here
   };
+
+  if (!station) {
+    return (
+      <>
+        <TopNav />
+        <div className="p-8 text-center font-mono text-neon-primary animate-pulse">LOADING STATION DATA...</div>
+      </>
+    );
+  }
 
   return (
     <>
