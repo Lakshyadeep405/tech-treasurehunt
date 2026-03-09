@@ -53,16 +53,18 @@ export default function TopNav() {
             </Button>
           )}
           
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/leaderboard')}
-            className={location.pathname === '/leaderboard' ? 'bg-secondary/50 text-neon-cyan' : ''}
-            title="Leaderboard"
-          >
-            <Trophy className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline-block">Leaderboard</span>
-          </Button>
+          {isAdmin && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/leaderboard')}
+              className={location.pathname === '/leaderboard' ? 'bg-secondary/50 text-neon-cyan' : ''}
+              title="Leaderboard"
+            >
+              <Trophy className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline-block">Leaderboard</span>
+            </Button>
+          )}
 
           <Button 
             variant="ghost" 

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { useGameStore } from './store/gameStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -20,8 +20,39 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.Re
   return <>{children}</>;
 };
 
+import { useEffect } from 'react';
+
 function App() {
-  const { id } = useGameStore();
+  const { id, isAdmin, addPenalty } = useGameStore();
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Only penalize active non-admin players when they hide the tab
+      if (document.hidden && id && !isAdmin) {
+        addPenalty();
+        // Use a short timeout to ensure toast appears when they return
+        setTimeout(() => {
+          toast.error('SECURITY VIOLATION DETECTED', { 
+            description: 'Tab switching registered. A 5-minute penalty has been applied to your team.',
+            duration: 8000,
+          });
+        }, 500);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Disable right-click / context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      if (!isAdmin) e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [id, isAdmin, addPenalty]);
 
   return (
     <BrowserRouter>
@@ -29,7 +60,6 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={id ? <Navigate to="/dashboard" /> : <LoginPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
           
           {/* Team Routes */}
           <Route path="/dashboard" element={
@@ -62,6 +92,11 @@ function App() {
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin>
               <AdminPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/leaderboard" element={
+            <ProtectedRoute requireAdmin>
+              <LeaderboardPage />
             </ProtectedRoute>
           } />
         </Routes>

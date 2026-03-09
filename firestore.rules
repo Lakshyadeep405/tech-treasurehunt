@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Admin has full access to everything
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == 'admin@techera.com'; 
+    }
+
+    // Stations Collection
+    match /stations/{stationId} {
+      // Anyone can read stations (we will hide sensitive fields in the UI, or we should use a Cloud Function)
+      // For MVP without Cloud Functions, we allow reads but rely on obscure document IDs or just client-side validation.
+      // Better yet, we can restrict to only allowing read. Admins can write.
+      allow read: if true; 
+      allow write: if false; 
+    }
+
+    // Teams Collection
+    match /teams/{teamId} {
+      // Teams can read their own data to resume session.
+      // We will use the team Code as the document ID for simplicity, or a generated UUID.
+      allow read, update: if true; // In a production app with sensitive data, we'd use Anonymous Auth and check request.auth.uid == teamId. For this MVP, we will allow open read/update to make it fast, but rely on the frontend for logic.
+      allow create: if true;
+      allow delete: if false;
+    }
+  }
+}

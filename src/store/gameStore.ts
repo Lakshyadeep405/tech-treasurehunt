@@ -14,6 +14,7 @@ export interface TeamState {
   logout: () => void;
   updateProgress: (station: number) => void;
   useHint: () => void;
+  addPenalty: () => void;
   finishGame: () => void;
 }
 
@@ -54,6 +55,8 @@ export const useGameStore = create<TeamState>()(
       updateProgress: (station) => set({ currentStation: station }),
       
       useHint: () => set((state) => ({ totalHintsUsed: state.totalHintsUsed + 1 })),
+      
+      addPenalty: () => set((state) => ({ totalHintsUsed: state.totalHintsUsed + 1 })),
       
       finishGame: () => set({ isFinished: true })
     }),

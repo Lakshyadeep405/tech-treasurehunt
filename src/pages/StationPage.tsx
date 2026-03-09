@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Terminal, Send, LockOpen, Map, HelpCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,7 +77,13 @@ export default function StationPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 
-                <div className="p-4 rounded-lg bg-background border border-border/50 font-mono text-sm leading-relaxed text-foreground">
+                <div 
+                  className="p-4 rounded-lg bg-background border border-border/50 font-mono text-sm leading-relaxed text-foreground select-none"
+                  onCopy={(e) => {
+                    e.preventDefault();
+                    toast.error('Security Alert', { description: 'Copying terminal output is restricted.' });
+                  }}
+                >
                   <p className="mb-4 text-neon-cyan">{station.question.prompt}</p>
                   
                   {station.question.codeSnippet && (
@@ -108,7 +114,7 @@ export default function StationPage() {
                 </Button>
                 
                 <Dialog open={isHintOpen} onOpenChange={setIsHintOpen}>
-                  <DialogTrigger asChild>
+                  <DialogTrigger>
                     <Button variant="outline" className="text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 border-yellow-500/30 font-mono text-xs">
                       <HelpCircle className="w-4 h-4 mr-2" />
                       REQUEST HINT
