@@ -45,7 +45,7 @@ function App() {
       <div className="min-h-screen bg-background text-foreground selection:bg-neon-primary/30 relative">
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={id ? <Navigate to="/dashboard" /> : <LoginPage />} />
+          <Route path="/" element={id ? (isAdmin ? <Navigate to="/admin" /> : <Navigate to="/dashboard" />) : <LoginPage />} />
           
           {/* Team Routes */}
           <Route path="/dashboard" element={
